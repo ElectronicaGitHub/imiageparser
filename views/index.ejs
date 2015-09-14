@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>IMAGEPARSER</title>
+
+	<style>
+
+	#preview {
+		max-width: 400px;
+		max-height: 400px;
+	}
+
+	.block {
+		width: 40px;
+		height: 40px;
+		float: left;
+	}
+	.cb {
+		clear: both;
+	}
+	.center {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		margin: auto;
+		width: 300px;
+		height: 300px;
+		background: #d5d5d5;
+		border-radius: 50%;
+	}
+	.preview {
+		width: 100%;
+		height: 100%;
+		background-size: cover;
+		background-position: center;
+		z-index: 1000;
+		border-radius: 50%;
+	}
+	.injection {
+		position: absolute;
+		border-radius: 50%;
+		width: 0;
+		height: 0;
+	}
+
+	</style>
+
+	<script src="../bower_components/jquery/dist/jquery.min.js"></script>
+	<script src="../bower_components/jquery-ui.min.js"></script>
+	<script src="../bower_components/angular/angular.min.js"></script>
+	<script>
+
+	angular.module('app', []).controller('Main', ['$scope', '$http', function (scope, http) {
+
+		scope.triggerLoad = function () {
+			$('#image').click();
+		}
+
+		$('#image').on('change', function (e) {
+
+			animationEnd(); 
+
+			readURL(this);
+			var data = new FormData();
+			data.append('file', e.target.files[0]);
+			console.log(e.target.files[0]);
+			http.post('/loadimage', data, {
+				transformRequest: angular.identity,
+				headers: {'Content-Type': undefined }
+			})
+				.success(function (data) {
+
+					scope.palette = data.palette.map(function (el) {
+						el = 'rgb(' + el[0] + ',' + el[1] + ',' + el[2] + ')';
+						return el;
+					})
+					console.log(scope.palette);
+					animationInit(scope.palette);
+				})
+				.error(function (data) {
+					console.log(data);
+				})
+		})
+
+		function readURL(input) {
+		    if (input.files && input.files[0]) {
+		        var reader = new FileReader();
+
+		        reader.onload = function (e) {
+		            $('.preview').css({
+		            	'background-image': 'url(' + e.target.result + ')'
+		            })
+		        }
+		        reader.readAsDataURL(input.files[0]);
+		    }
+		}
+
+		// Draw Part
+
+		// Settings
+		var imageSize = {
+			width :  parseInt($('.preview').css('width')),
+			height : parseInt($('.preview').css('height'))
+		},
+
+		circle = {
+			count : 10,
+			size : 15
+		},
+		init = {
+			element : $('.preview'),
+			top : imageSize.height / 2,
+			left : imageSize.width / 2
+		},
+		mock = $('<div/>').addClass('injection'),
+		defaultTime = 100,
+		drawTime = 70;
+
+		// Single Circle Drawing
+		function drawCircle(number, color) {
+			var injection = mock.clone();
+
+			var obj = {
+				width : imageSize.width + (number * circle.size * 2),
+				height : imageSize.height + (number * circle.size * 2),
+				top : -number * circle.size,
+				left : -number * circle.size
+			}
+			console.log(obj);
+
+			injection
+				.attr('number', number)
+				.css({
+					'z-index' : - number - 1,
+					top : init.top,
+					left : init.left,
+					'background-color' : color
+
+				})
+				.appendTo(init.element)
+				.animate(obj, defaultTime + drawTime * number, 'easeOutBack')
+		}
+
+		function animationInit(palette) {
+			console.log('animation initiate');
+			angular.forEach(palette, function (color, n) {
+				drawCircle(n + 1, color);
+			})
+		}
+
+		function animationEnd () {
+			$('.injection').remove();
+		}
+		
+	}])
+
+	</script>
+</head>
+<body>
+
+	<div ng-app="app" ng-controller="Main">
+		<input id="image" type="file" style="visibility:hidden">
+
+		<div class="center" ng-click="triggerLoad()">
+			<!-- <img class="cb" id="preview" src="#" alt="your image"/> -->
+			<div class="preview"></div>
+		</div>
+		<!-- <div class="cb"> -->
+			<!-- <div class="block" ng-repeat="colors in palette" style="background-color : {{ colors }}"></div> -->
+		<!-- </div> -->
+	</div>
+	
+</body>
+</html>
